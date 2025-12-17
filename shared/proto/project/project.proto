@@ -1,0 +1,279 @@
+syntax = "proto3";
+package project;
+
+option go_package = "awesome-defect-tracker/shared/project";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// ========== ENUMS ==========
+enum DefectStatus {
+  DEFECT_STATUS_UNSPECIFIED = 0;
+  DEFECT_STATUS_NEW = 1;
+  DEFECT_STATUS_IN_WORK = 2;
+  DEFECT_STATUS_IN_REVIEW = 3;
+  DEFECT_STATUS_CLOSED = 4;
+  DEFECT_STATUS_CANCELLED = 5;
+}
+
+enum DefectPriority {
+  DEFECT_PRIORITY_UNSPECIFIED = 0;
+  DEFECT_PRIORITY_LOW = 1;
+  DEFECT_PRIORITY_MEDIUM = 2;
+  DEFECT_PRIORITY_HIGH = 3;
+}
+
+enum ProjectStatus {
+  PROJECT_STATUS_UNSPECIFIED = 0;
+  PROJECT_STATUS_ACTIVE = 1;
+  PROJECT_STATUS_PLANNING = 2;
+  PROJECT_STATUS_COMPLETED = 3;
+  PROJECT_STATUS_ARCHIVED = 4;
+}
+
+// ========== ОПЦИОНАЛЬНЫЕ ТИПЫ ==========
+message OptionalString {
+  string value = 1;
+}
+
+message OptionalTimestamp {
+  google.protobuf.Timestamp value = 1;
+}
+
+message OptionalProjectStatus {
+  ProjectStatus value = 1;
+}
+
+message OptionalDefectStatus {
+  DefectStatus value = 1;
+}
+
+message OptionalDefectPriority {
+  DefectPriority value = 1;
+}
+
+// ========== МОДЕЛИ ==========
+message Comment {
+  string id = 1;
+  string text = 2;
+  string user_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message Defect {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  DefectStatus status = 4;
+  DefectPriority priority = 5;
+  google.protobuf.Timestamp due_date = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+
+  // ТОЛЬКО ID как в models
+  string project_id = 9;
+  string engineer_id = 10;
+  string reporter_id = 11;
+  repeated Comment comments = 12;
+}
+
+message Project {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  ProjectStatus status = 4;
+  google.protobuf.Timestamp start_date = 5;
+  google.protobuf.Timestamp end_date = 6;
+  string manager_id = 7;
+  repeated string engineer_ids = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+
+  repeated Defect defects = 11;
+}
+
+// ========== ФИЛЬТРЫ ==========
+message DefectFilter {
+  OptionalString project_id = 1;
+  OptionalString engineer_id = 2;
+  OptionalString reporter_id = 3;
+  OptionalDefectStatus status = 4;
+  OptionalDefectPriority priority = 5;
+  OptionalString search = 6;
+}
+
+message PaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string sort_by = 3;
+  string sort_order = 4;  // asc, desc
+}
+
+message PaginatedResponse {
+  int32 total = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  int32 total_pages = 4;
+}
+
+// ========== ЗАПРОСЫ ==========
+message CreateProjectRequest {
+  string name = 1;
+  string description = 2;
+  string manager_id = 3;
+  repeated string engineer_ids = 4;
+  google.protobuf.Timestamp start_date = 5;
+  google.protobuf.Timestamp end_date = 6;
+}
+
+message GetProjectRequest {
+  string project_id = 1;
+}
+
+message ListProjectsRequest {
+  string manager_id = 1;
+  ProjectStatus status = 2;
+  string engineer_id = 3;
+  string search = 4;
+  int32 page = 5;
+  int32 limit = 6;
+}
+
+message ListProjectsResponse {
+  repeated Project projects = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message UpdateProjectRequest {
+  string project_id = 1;
+  OptionalString name = 2;
+  OptionalString description = 3;
+  OptionalProjectStatus status = 4;
+  OptionalTimestamp start_date = 5;
+  OptionalTimestamp end_date = 6;
+}
+
+message AddEngineersRequest {
+  string project_id = 1;
+  repeated string engineer_ids = 2;
+}
+
+message RemoveEngineerRequest {
+  string project_id = 1;
+  string engineer_id = 2;
+}
+
+message ValidateAccessRequest {
+  string project_id = 1;
+  string user_id = 2;
+}
+
+message ValidateAccessResponse {
+  bool has_access = 1;
+  string role_in_project = 2;
+}
+
+message CreateDefectRequest {
+  string title = 1;
+  string description = 2;
+  DefectPriority priority = 3;
+  string project_id = 4;
+  string engineer_id = 5;
+  google.protobuf.Timestamp due_date = 6;
+}
+
+message GetDefectRequest {
+  string defect_id = 1;
+}
+
+message ListDefectsRequest {
+  DefectFilter filter = 1;
+  PaginationRequest pagination = 2;
+}
+
+message ListDefectsResponse {
+  repeated Defect defects = 1;
+  PaginatedResponse pagination = 2;
+}
+
+message UpdateDefectStatusRequest {
+  string defect_id = 1;
+  DefectStatus status = 2;
+}
+
+message UpdateDefectPriorityRequest {
+  string defect_id = 1;
+  DefectPriority priority = 2;
+}
+
+message AssignEngineerRequest {
+  string defect_id = 1;
+  string engineer_id = 2;
+}
+
+message UpdateDefectRequest {
+  string defect_id = 1;
+  OptionalString title = 2;
+  OptionalString description = 3;
+  OptionalTimestamp due_date = 4;
+}
+
+message AddCommentRequest {
+  string defect_id = 1;
+  string text = 2;
+  string user_id = 3;
+}
+
+message UpdateCommentRequest {
+  string comment_id = 1;
+  string text = 2;
+}
+
+message DeleteCommentRequest {
+  string comment_id = 1;
+}
+
+message GetCommentsRequest {
+  string defect_id = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message GetCommentsResponse {
+  repeated Comment comments = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+// ========== СЕРВИС ==========
+service ProjectService {
+  // === ПРОЕКТЫ ===
+  rpc CreateProject(CreateProjectRequest) returns (Project);
+  rpc GetProject(GetProjectRequest) returns (Project);
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc UpdateProject(UpdateProjectRequest) returns (Project);
+  rpc DeleteProject(GetProjectRequest) returns (google.protobuf.Empty);
+  rpc AddEngineers(AddEngineersRequest) returns (Project);
+  rpc RemoveEngineer(RemoveEngineerRequest) returns (Project);
+  rpc ValidateAccess(ValidateAccessRequest) returns (ValidateAccessResponse);
+
+  // === ДЕФЕКТЫ ===
+  rpc CreateDefect(CreateDefectRequest) returns (Defect);
+  rpc GetDefect(GetDefectRequest) returns (Defect);
+  rpc ListDefects(ListDefectsRequest) returns (ListDefectsResponse);
+  rpc UpdateDefect(UpdateDefectRequest) returns (Defect);
+  rpc UpdateDefectStatus(UpdateDefectStatusRequest) returns (Defect);
+  rpc UpdateDefectPriority(UpdateDefectPriorityRequest) returns (Defect);
+  rpc AssignEngineer(AssignEngineerRequest) returns (Defect);
+  rpc DeleteDefect(GetDefectRequest) returns (google.protobuf.Empty);
+
+  // === КОММЕНТАРИИ ===
+  rpc AddComment(AddCommentRequest) returns (Comment);
+  rpc UpdateComment(UpdateCommentRequest) returns (Comment);
+  rpc DeleteComment(DeleteCommentRequest) returns (google.protobuf.Empty);
+  rpc GetComments(GetCommentsRequest) returns (GetCommentsResponse);
+}

@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  users_db:
+    image: postgres:16-alpine
+    container_name: users_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${USER_DB_USER}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
+      POSTGRES_DB: ${USER_DB_NAME}
+    ports:
+      - "5433:5432"
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    networks:
+      - defect_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${USER_DB_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  projects_db:
+    image: postgres:16-alpine
+    container_name: projects_db
+    environment:
+      POSTGRES_USER: ${PROJECTS_DB_USER}
+      POSTGRES_PASSWORD: ${PROJECTS_DB_PASSWORD}
+      POSTGRES_DB: ${PROJECTS_DB_NAME}
+    ports:
+      - "5434:5432"
+    volumes:
+      - projects_db_data:/var/lib/postgresql/data
+    networks:
+      - defect_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${PROJECTS_DB_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  users_service:
+    build:
+      context: .
+      dockerfile: users_service/Dockerfile
+      args:
+        SERVICE_DIR: users_service
+    container_name: users_service
+    depends_on:
+      users_db:
+        condition: service_healthy
+    environment:
+      DB_HOST: users_db
+      DB_PORT: 5432
+      DB_USER: ${USER_DB_USER}
+      DB_PASSWORD: ${USER_DB_PASSWORD}
+      DB_NAME: ${USER_DB_NAME}
+      SERVICE_PORT: 50051
+    ports:
+      - "50051:50051"
+    networks:
+      - defect_network
+    restart: unless-stopped
+    volumes:
+      - ./keys:/keys:ro
+
+  projects_service:
+    build:
+      context: .
+      dockerfile: projects_service/Dockerfile
+      args:
+        SERVICE_DIR: projects_service
+    container_name: projects_service
+    depends_on:
+      projects_db:
+        condition: service_healthy
+      users_service:
+        condition: service_started
+    environment:
+      DB_HOST: projects_db
+      DB_PORT: 5432
+      DB_USER: ${PROJECTS_DB_USER}
+      DB_PASSWORD: ${PROJECTS_DB_PASSWORD}
+      DB_NAME: ${PROJECTS_DB_NAME}
+      SERVICE_PORT: 50052
+      USER_SERVICE_ADDR: users_service:50052
+    ports:
+      - "50052:50052"
+    networks:
+      - defect_network
+    restart: unless-stopped
+
+
+  gateway_service:
+    build:
+      context: .
+      dockerfile: gateway_service/Dockerfile
+      args:
+        SERVICE_DIR: gateway_service
+    container_name: gateway_service
+    depends_on:
+      - users_service
+      - projects_service
+    environment:
+      PORT: 8080
+      USER_SERVICE_ADDR: users_service:50051
+      PROJECT_SERVICE_ADDR: projects_service:50052
+    ports:
+      - "8080:8080"
+    networks:
+      - defect_network
+    restart: unless-stopped
+    volumes:
+      - ./keys:/keys:ro
+
+networks:
+  defect_network:
+    driver: bridge
+
+volumes:
+  user_db_data:
+  projects_db_data:

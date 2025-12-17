@@ -1,0 +1,123 @@
+syntax = "proto3";
+package user;
+
+option go_package = "awesome-defect-tracker/shared/user";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// ========== МОДЕЛИ ==========
+message User {
+  string id = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string role = 5;
+  bool is_active = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message TokenPair {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_at = 3;
+}
+
+// ========== АУТЕНТИФИКАЦИЯ ==========
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string role = 5;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message AuthResponse {
+  User user = 1;
+  TokenPair tokens = 2;
+}
+
+message TokenResponse {
+  TokenPair tokens = 1;
+}
+
+message ValidateTokenResponse {
+  string user_id = 1;
+  string email = 2;
+  string role = 3;
+  bool valid = 4;
+}
+
+// ========== УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ ==========
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message ListUsersRequest {
+  string role = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message UpdateProfileRequest {
+  string user_id = 1;
+  string first_name = 2;
+  string last_name = 3;
+}
+
+message ChangePasswordRequest {
+  string user_id = 1;
+  string old_password = 2;
+  string new_password = 3;
+}
+
+// ========== СЕРВИС ==========
+service UserService {
+  // Аутентификация
+  rpc Register(RegisterRequest) returns (AuthResponse);
+  rpc Login(LoginRequest) returns (AuthResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (TokenResponse);
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // Управление пользователями
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (User);
+  rpc ChangePassword(ChangePasswordRequest) returns (google.protobuf.Empty);
+
+  // Административные
+  rpc UpdateUserRole(UpdateUserRoleRequest) returns (User);
+  rpc DeactivateUser(UserRequest) returns (google.protobuf.Empty);
+  rpc ActivateUser(UserRequest) returns (google.protobuf.Empty);
+}
+
+// Вспомогательные сообщения
+message UpdateUserRoleRequest {
+  string user_id = 1;
+  string role = 2;
+}
+
+message UserRequest {
+  string user_id = 1;
+}
